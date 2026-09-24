@@ -32,10 +32,10 @@ const isTouchDevice = matchMedia('(pointer: coarse)').matches;
 const prefersReducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const BOARD = { width: 9, height: 10, spacing: 1 };
 const COLORS = {
-  // Qin terracotta and lacquer accents.  The black army is intentionally
-  // lifted above the night background so its armor silhouette remains legible.
-  red: { body: 0x875842, edge: 0xb33d32, metal: 0xc09358, ink: '#f0c083' },
-  black: { body: 0x686a61, edge: 0x3e5559, metal: 0xa2a391, ink: '#d9dfd2' },
+  // Both armies wear gilded lamellar armour; lacquer cords and banners carry
+  // the faction colour, keeping the human figures close to the references.
+  red: { body: 0x6b4237, edge: 0xb33d32, metal: 0xc9a66a, ink: '#f0c083' },
+  black: { body: 0x4d4943, edge: 0x39727a, metal: 0xbda66f, ink: '#d9dfd2' },
 };
 
 let renderer;
@@ -1006,67 +1006,117 @@ function addMesh(parent, geometry, material, x, y, z, rotation = null) {
   return mesh;
 }
 
+let lamellarTexture;
+
+function getLamellarTexture() {
+  if (lamellarTexture) return lamellarTexture;
+  const canvas = document.createElement('canvas');
+  canvas.width = 256; canvas.height = 256;
+  const ctx = canvas.getContext('2d');
+  const gradient = ctx.createLinearGradient(0, 0, 256, 256);
+  gradient.addColorStop(0, '#e9c46a');
+  gradient.addColorStop(.48, '#9b6b2d');
+  gradient.addColorStop(1, '#5d3d1e');
+  ctx.fillStyle = gradient; ctx.fillRect(0, 0, 256, 256);
+  // Overlapping fish-scale rows: one textured plane reads as many hand-made
+  // brass lamellae without creating dozens of meshes per soldier.
+  for (let row = -1; row < 10; row += 1) {
+    const y = row * 29;
+    for (let col = -1; col < 10; col += 1) {
+      const x = col * 29 + (row % 2 ? 14 : 0);
+      ctx.beginPath();
+      ctx.moveTo(x, y + 4); ctx.quadraticCurveTo(x + 14, y - 5, x + 28, y + 4);
+      ctx.lineTo(x + 24, y + 25); ctx.quadraticCurveTo(x + 14, y + 31, x + 4, y + 25);
+      ctx.closePath();
+      ctx.fillStyle = row % 3 === 0 ? '#f1d17a' : '#c19343'; ctx.fill();
+      ctx.strokeStyle = '#5d3d1e'; ctx.lineWidth = 2; ctx.stroke();
+      ctx.strokeStyle = 'rgba(255,241,172,.38)'; ctx.lineWidth = 1; ctx.stroke();
+    }
+  }
+  lamellarTexture = new THREE.CanvasTexture(canvas);
+  lamellarTexture.colorSpace = THREE.SRGBColorSpace;
+  lamellarTexture.wrapS = THREE.RepeatWrapping; lamellarTexture.wrapT = THREE.RepeatWrapping;
+  return lamellarTexture;
+}
+
 function addHumanoid(group, body, edge, metal, options = {}) {
   const scale = options.scale || 1;
   const skin = new THREE.MeshStandardMaterial({ color: options.skin || 0xa56f58, roughness: .72, metalness: .03 });
   const cloth = new THREE.MeshStandardMaterial({ color: options.clothColor || body.color, roughness: .86, metalness: .03 });
-  const dark = new THREE.MeshStandardMaterial({ color: options.darkColor || 0x302d28, roughness: .78, metalness: .08 });
-  const armor = new THREE.MeshStandardMaterial({ color: options.armorColor || edge.color, roughness: .52, metalness: .3 });
+  const dark = new THREE.MeshStandardMaterial({ color: options.darkColor || 0x25262a, roughness: .76, metalness: .1 });
+  const armor = new THREE.MeshStandardMaterial({ color: options.armorColor || edge.color, roughness: .5, metalness: .32 });
+  const goldArmor = new THREE.MeshStandardMaterial({ map: getLamellarTexture(), color: 0xffffff, roughness: .42, metalness: .4 });
   const parts = {};
 
-  // A taller 7-head Qin infantry silhouette: boots, greaves, lamellar skirt,
-  // cuirass, articulated arms, face, hair knot and helmet. The feet start at
-  // y=0, so the soldier is planted on the board without a token base.
-  for (const x of [-.105, .105]) {
-    addMesh(group, new THREE.BoxGeometry(.16 * scale, .08 * scale, .29 * scale), dark, x * scale, .045 * scale, .08 * scale);
-    addMesh(group, new THREE.CylinderGeometry(.064 * scale, .082 * scale, .38 * scale, 8), armor, x * scale, .28 * scale, 0);
-    addMesh(group, new THREE.BoxGeometry(.12 * scale, .22 * scale, .035 * scale), metal, x * scale, .3 * scale, .115 * scale);
-    addMesh(group, new THREE.BoxGeometry(.14 * scale, .055 * scale, .045 * scale), armor, x * scale, .49 * scale, .07 * scale);
+  // Long adult silhouette with soft cloth boots and articulated lamellar
+  // armour. Feet begin at y=0: there is intentionally no chess-piece base.
+  for (const x of [-.11, .11]) {
+    addMesh(group, new THREE.BoxGeometry(.17 * scale, .1 * scale, .31 * scale), dark, x * scale, .055 * scale, .08 * scale);
+    addMesh(group, new THREE.CylinderGeometry(.065 * scale, .082 * scale, .38 * scale, 8), armor, x * scale, .29 * scale, 0);
+    addMesh(group, new THREE.BoxGeometry(.13 * scale, .2 * scale, .04 * scale), goldArmor, x * scale, .31 * scale, .115 * scale);
+    addMesh(group, new THREE.BoxGeometry(.14 * scale, .06 * scale, .06 * scale), armor, x * scale, .5 * scale, .07 * scale);
   }
-  for (const x of [-.16, -.055, .055, .16]) {
-    addMesh(group, new THREE.BoxGeometry(.085 * scale, .19 * scale, .04 * scale), armor, x * scale, .51 * scale, .13 * scale);
-  }
-  parts.torso = addMesh(group, new THREE.CylinderGeometry(.17 * scale, .225 * scale, .48 * scale, 8), cloth, 0, .72 * scale, 0);
-  addMesh(group, new THREE.BoxGeometry(.31 * scale, .34 * scale, .055 * scale), armor, 0, .75 * scale, .16 * scale);
-  for (let row = 0; row < 4; row += 1) {
-    addMesh(group, new THREE.BoxGeometry(.27 * scale, .035 * scale, .025 * scale), metal, 0, (.59 + row * .075) * scale, .195 * scale);
-  }
-  addMesh(group, new THREE.BoxGeometry(.37 * scale, .055 * scale, .09 * scale), dark, 0, .96 * scale, .08 * scale);
-  addMesh(group, new THREE.CylinderGeometry(.045 * scale, .045 * scale, .1 * scale, 7), skin, 0, 1.0 * scale, 0);
 
-  parts.leftArm = addMesh(group, new THREE.CylinderGeometry(.052 * scale, .068 * scale, .31 * scale, 7), cloth, -.22 * scale, .84 * scale, 0, { z: -.42 });
-  parts.rightArm = addMesh(group, new THREE.CylinderGeometry(.052 * scale, .068 * scale, .31 * scale, 7), cloth, .22 * scale, .84 * scale, 0, { z: .42 });
-  addMesh(group, new THREE.CylinderGeometry(.045 * scale, .06 * scale, .27 * scale, 7), armor, -.29 * scale, .66 * scale, .07 * scale, { z: .25 });
-  addMesh(group, new THREE.CylinderGeometry(.045 * scale, .06 * scale, .27 * scale, 7), armor, .29 * scale, .66 * scale, .07 * scale, { z: -.25 });
-  addMesh(group, new THREE.SphereGeometry(.062 * scale, 8, 6), skin, -.32 * scale, .55 * scale, .12 * scale);
-  addMesh(group, new THREE.SphereGeometry(.062 * scale, 8, 6), skin, .32 * scale, .55 * scale, .12 * scale);
-  addMesh(group, new THREE.SphereGeometry(.132 * scale, 12, 9), skin, 0, 1.12 * scale, .025 * scale);
-  addMesh(group, new THREE.BoxGeometry(.035 * scale, .075 * scale, .035 * scale), skin, 0, 1.1 * scale, .14 * scale);
-  addMesh(group, new THREE.BoxGeometry(.075 * scale, .018 * scale, .018 * scale), dark, -.055 * scale, 1.16 * scale, .13 * scale);
-  addMesh(group, new THREE.BoxGeometry(.075 * scale, .018 * scale, .018 * scale), dark, .055 * scale, 1.16 * scale, .13 * scale);
-  if (options.beard) addMesh(group, new THREE.ConeGeometry(.075 * scale, .15 * scale, 7), dark, 0, 1.02 * scale, .12 * scale);
-  addMesh(group, new THREE.SphereGeometry(.16 * scale, 12, 8, 0, Math.PI * 2, 0, Math.PI * .55), metal, 0, 1.23 * scale, 0);
-  addMesh(group, new THREE.BoxGeometry(.31 * scale, .045 * scale, .07 * scale), armor, 0, 1.18 * scale, .04 * scale);
-  addMesh(group, new THREE.BoxGeometry(.055 * scale, .16 * scale, .08 * scale), armor, -.13 * scale, 1.08 * scale, .02 * scale);
-  addMesh(group, new THREE.BoxGeometry(.055 * scale, .16 * scale, .08 * scale), armor, .13 * scale, 1.08 * scale, .02 * scale);
-  addMesh(group, new THREE.CylinderGeometry(.048 * scale, .065 * scale, .16 * scale, 8), dark, 0, 1.4 * scale, -.015 * scale);
-  addMesh(group, new THREE.SphereGeometry(.07 * scale, 8, 6), dark, 0, 1.5 * scale, -.015 * scale);
-  for (const x of [-.22, .22]) addMesh(group, new THREE.SphereGeometry(.105 * scale, 8, 6), armor, x * scale, .91 * scale, 0);
+  parts.torso = addMesh(group, new THREE.CylinderGeometry(.18 * scale, .235 * scale, .46 * scale, 8), cloth, 0, .72 * scale, 0);
+  // A single textured cuirass conveys hundreds of gold scales at mobile cost.
+  addMesh(group, new THREE.BoxGeometry(.34 * scale, .38 * scale, .055 * scale), goldArmor, 0, .77 * scale, .16 * scale);
+  addMesh(group, new THREE.BoxGeometry(.38 * scale, .055 * scale, .08 * scale), dark, 0, .98 * scale, .06 * scale);
+  for (const x of [-.2, .2]) {
+    const shoulder = addMesh(group, new THREE.CylinderGeometry(.1 * scale, .13 * scale, .22 * scale, 8), armor, x * scale, .96 * scale, .015 * scale, { z: x > 0 ? -.24 : .24 });
+    shoulder.scale.z = .72;
+    // Low-poly beast-head silhouette on each shoulder: brow, snout and jaw.
+    addMesh(group, new THREE.SphereGeometry(.085 * scale, 8, 6), metal, x * scale, 1.02 * scale, .12 * scale);
+    addMesh(group, new THREE.ConeGeometry(.045 * scale, .12 * scale, 6), metal, x * scale, .99 * scale, .19 * scale, { x: Math.PI / 2 });
+  }
+
+  parts.leftArm = addMesh(group, new THREE.CylinderGeometry(.055 * scale, .075 * scale, .32 * scale, 8), cloth, -.22 * scale, .84 * scale, 0, { z: -.42 });
+  parts.rightArm = addMesh(group, new THREE.CylinderGeometry(.055 * scale, .075 * scale, .32 * scale, 8), cloth, .22 * scale, .84 * scale, 0, { z: .42 });
+  addMesh(group, new THREE.CylinderGeometry(.052 * scale, .07 * scale, .25 * scale, 8), armor, -.29 * scale, .66 * scale, .08 * scale, { z: .25 });
+  addMesh(group, new THREE.CylinderGeometry(.052 * scale, .07 * scale, .25 * scale, 8), armor, .29 * scale, .66 * scale, .08 * scale, { z: -.25 });
+  addMesh(group, new THREE.SphereGeometry(.064 * scale, 8, 6), skin, -.32 * scale, .54 * scale, .12 * scale);
+  addMesh(group, new THREE.SphereGeometry(.064 * scale, 8, 6), skin, .32 * scale, .54 * scale, .12 * scale);
+
+  addMesh(group, new THREE.CylinderGeometry(.055 * scale, .055 * scale, .11 * scale, 8), skin, 0, 1.0 * scale, 0);
+  parts.head = addMesh(group, new THREE.SphereGeometry(.14 * scale, 12, 9), skin, 0, 1.13 * scale, .025 * scale);
+  parts.head.scale.set(1, 1.08, .91);
+  // Ears, nose, brows and a small moustache keep the adult face readable.
+  for (const x of [-.135, .135]) addMesh(group, new THREE.SphereGeometry(.036 * scale, 7, 5), skin, x * scale, 1.13 * scale, .02 * scale);
+  addMesh(group, new THREE.ConeGeometry(.025 * scale, .07 * scale, 5), skin, 0, 1.11 * scale, .145 * scale, { x: Math.PI / 2 });
+  for (const x of [-.055, .055]) {
+    addMesh(group, new THREE.BoxGeometry(.06 * scale, .014 * scale, .014 * scale), dark, x * scale, 1.165 * scale, .13 * scale, { z: x > 0 ? -.08 : .08 });
+    addMesh(group, new THREE.SphereGeometry(.012 * scale, 5, 4), dark, x * scale, 1.145 * scale, .142 * scale);
+  }
+  addMesh(group, new THREE.BoxGeometry(.08 * scale, .018 * scale, .018 * scale), dark, -.042 * scale, 1.075 * scale, .135 * scale, { z: -.12 });
+  addMesh(group, new THREE.BoxGeometry(.08 * scale, .018 * scale, .018 * scale), dark, .042 * scale, 1.075 * scale, .135 * scale, { z: .12 });
+  if (options.beard) addMesh(group, new THREE.ConeGeometry(.08 * scale, .16 * scale, 7), dark, 0, 1.03 * scale, .12 * scale);
+
+  // Folded black soft cap and long rear ties, matching the reference figures.
+  addMesh(group, new THREE.CylinderGeometry(.15 * scale, .17 * scale, .08 * scale, 8), dark, 0, 1.245 * scale, .005 * scale);
+  addMesh(group, new THREE.ConeGeometry(.14 * scale, .19 * scale, 8), dark, 0, 1.36 * scale, -.01 * scale);
+  addMesh(group, new THREE.BoxGeometry(.035 * scale, .3 * scale, .02 * scale), dark, -.075 * scale, 1.29 * scale, -.12 * scale, { z: -.08 });
+  addMesh(group, new THREE.BoxGeometry(.035 * scale, .3 * scale, .02 * scale), dark, .075 * scale, 1.29 * scale, -.12 * scale, { z: .08 });
   addQinArmorDetails(group, edge, metal, scale);
-  parts.head = group.children.find((child) => child.geometry?.type === 'SphereGeometry' && child.position.y > 1.05 * scale) || null;
   parts.weaponHand = parts.rightArm;
   group.userData.animationParts = parts;
   return parts;
 }
 
 function addQinArmorDetails(group, edge, metal, scale = 1) {
-  const dark = new THREE.MeshStandardMaterial({ color: 0x352d27, roughness: .78, metalness: .06 });
-  // Cross straps, side lamellae and a woven waist sash are characteristic of
-  // the Qin terracotta figures and read clearly even at a phone-sized view.
-  addMesh(group, new THREE.BoxGeometry(.035 * scale, .37 * scale, .022 * scale), metal, 0, .76 * scale, .205 * scale, { z: .34 });
-  addMesh(group, new THREE.BoxGeometry(.035 * scale, .37 * scale, .022 * scale), metal, 0, .76 * scale, .208 * scale, { z: -.34 });
-  addMesh(group, new THREE.BoxGeometry(.33 * scale, .032 * scale, .05 * scale), dark, 0, .95 * scale, .18 * scale);
-  for (const x of [-.2, .2]) addMesh(group, new THREE.BoxGeometry(.055 * scale, .22 * scale, .07 * scale), metal, x * scale, .7 * scale, -.1 * scale);
+  const dark = new THREE.MeshStandardMaterial({ color: 0x2c2524, roughness: .78, metalness: .06 });
+  const cord = new THREE.MeshStandardMaterial({ color: edge.color, roughness: .62, metalness: .15 });
+  // Leather cross straps and bright red binding make the silhouette read as
+  // hand-laced armour rather than a smooth sci-fi breastplate.
+  addMesh(group, new THREE.BoxGeometry(.035 * scale, .36 * scale, .026 * scale), dark, 0, .77 * scale, .205 * scale, { z: .34 });
+  addMesh(group, new THREE.BoxGeometry(.035 * scale, .36 * scale, .026 * scale), dark, 0, .77 * scale, .208 * scale, { z: -.34 });
+  addMesh(group, new THREE.BoxGeometry(.34 * scale, .028 * scale, .035 * scale), cord, 0, .59 * scale, .205 * scale);
+  addMesh(group, new THREE.BoxGeometry(.34 * scale, .026 * scale, .035 * scale), cord, 0, .96 * scale, .2 * scale);
+  addMesh(group, new THREE.BoxGeometry(.32 * scale, .045 * scale, .055 * scale), dark, 0, .53 * scale, .08 * scale);
+  // Side lamellae and skirt flaps suggest movement when the unit advances.
+  for (const x of [-.2, .2]) {
+    addMesh(group, new THREE.BoxGeometry(.07 * scale, .23 * scale, .045 * scale), metal, x * scale, .67 * scale, -.12 * scale, { z: x > 0 ? -.12 : .12 });
+    addMesh(group, new THREE.BoxGeometry(.075 * scale, .18 * scale, .03 * scale), dark, x * scale, .51 * scale, .06 * scale, { z: x > 0 ? -.1 : .1 });
+  }
+  for (const x of [-.13, .13]) addMesh(group, new THREE.SphereGeometry(.022 * scale, 6, 4), metal, x * scale, .955 * scale, .225 * scale);
 }
 
 function addCloak(group, material, scale = 1, z = -.11) {
