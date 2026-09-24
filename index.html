@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+  <meta name="theme-color" content="#0d151b">
+  <meta name="description" content="鸿沟楚汉战场 · 3D 中国象棋">
+  <title>鸿沟楚汉战场 · 3D 象棋</title>
+  <link rel="stylesheet" href="styles.css">
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "./assets/vendor/three.module.js",
+      "three/addons/": "./assets/vendor/"
+    }
+  }
+  </script>
+</head>
+<body>
+  <main class="app-shell">
+    <header class="topbar" aria-label="对局状态">
+      <div class="brand-lockup">
+        <div class="brand-mark" aria-hidden="true"><span></span><span></span><span></span></div>
+        <div>
+          <p class="eyebrow">刘邦汉军 × 项羽楚军</p>
+          <h1>鸿沟楚汉战场</h1>
+        </div>
+      </div>
+      <div class="turn-readout" aria-live="polite">
+        <span class="turn-dot" id="turn-dot"></span>
+        <div>
+          <strong id="turn-label">汉军回合</strong>
+          <span id="turn-sub">请下达军令</span>
+        </div>
+      </div>
+      <div class="top-actions">
+        <span class="round-count" id="round-count">第 1 回合</span>
+        <button class="icon-button" id="sound-toggle" type="button" aria-label="关闭声音" data-tooltip="声音开关"><span class="icon icon-sound" aria-hidden="true">◖)))</span></button>
+        <button class="icon-button" id="reset-top" type="button" aria-label="重新开始" data-tooltip="重新开始">↻</button>
+      </div>
+    </header>
+
+    <section class="battlefield" aria-label="3D 象棋战场">
+      <div class="scene-vignette" aria-hidden="true"></div>
+      <div id="scene-wrap" class="scene-wrap">
+        <canvas id="scene" aria-label="3D 中国象棋棋盘，可点击棋子和落点操作"></canvas>
+        <div class="scene-hint" id="scene-hint" aria-live="polite">点按军阵，查看渡河路线</div>
+        <div class="toast" id="toast" role="status" aria-live="polite"></div>
+      </div>
+      <aside class="battle-panel" aria-label="战况记录">
+        <div class="panel-heading">
+          <span>战况</span>
+          <span class="live-indicator"><i></i> LIVE</span>
+        </div>
+        <div class="battle-summary">
+          <div><span class="summary-label">汉军 · 红</span><strong id="red-material">16</strong></div>
+          <div class="summary-divider"></div>
+          <div><span class="summary-label">楚军 · 黑</span><strong id="black-material">16</strong></div>
+        </div>
+        <ol class="event-log" id="event-log" aria-live="polite">
+          <li class="event-muted">鸿沟两岸，等待军令</li>
+        </ol>
+        <div class="legend" aria-label="兵种图例">
+          <span><b class="legend-red"></b>汉军</span>
+          <span><b class="legend-black"></b>楚军</span>
+          <span><b class="legend-amber"></b>可行军</span>
+        </div>
+      </aside>
+    </section>
+
+    <div class="status-strip" id="status-strip">
+      <span class="status-glyph" aria-hidden="true">✦</span>
+      <span id="status-message">汉军先行 · 鸿沟为界</span>
+    </div>
+
+    <nav class="toolbar" aria-label="战场工具">
+      <button class="tool-button" id="undo-button" type="button" aria-label="撤回上一步" data-tooltip="撤回"><span aria-hidden="true">↶</span><small>撤回</small></button>
+      <button class="tool-button" id="camera-button" type="button" aria-label="复位视角" data-tooltip="复位视角"><span aria-hidden="true">⌖</span><small>视角</small></button>
+      <button class="command-button" id="hint-button" type="button" aria-label="显示提示"><span class="command-icon" aria-hidden="true">✦</span><span><b>军师提示</b><small>寻找下一手</small></span></button>
+      <button class="tool-button" id="mode-button" type="button" aria-label="切换对战模式" data-tooltip="切换模式"><span aria-hidden="true">⚔</span><small id="mode-label">人机</small></button>
+      <button class="tool-button" id="reset-button" type="button" aria-label="重新布阵" data-tooltip="重新布阵"><span aria-hidden="true">⟲</span><small>重开</small></button>
+    </nav>
+    <footer class="footer-note"><span>拖动旋转战场</span><span>·</span><span>双指缩放</span><span>·</span><span>单击落子</span></footer>
+  </main>
+  <script type="module" src="app.js?v=chuhan-battlefield-2"></script>
+</body>
+</html>
